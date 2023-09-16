@@ -1,8 +1,12 @@
 ﻿using CommBank.Models;
 using CommBank.Services;
 using MongoDB.Driver;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var dataDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Data"); //for seeeding the JSON Data 
 
 builder.Services.AddControllers();
 
@@ -46,6 +50,35 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+
+// Seed each collection
+SeedCollection<Account>("Accounts", "Accounts.json");
+SeedCollection<Goal>("Goals", "Goals.json");
+SeedCollection<CommBank.Models.Tag>("Tags", "Tags.json"); // Use your Tag model, not MongoDB.Driver.Tag
+SeedCollection<Transaction>("Transactions", "Transactions.json");
+SeedCollection<User>("Users", "Users.json");
+
+
+void SeedCollection<T>(string collectionName, string jsonFileName)
+{
+    var collection = mongoDatabase.GetCollection<T>(collectionName);
+    var jsonFilePath = Path.Combine(dataDirectory, jsonFileName);
+
+    if (File.Exists(jsonFilePath))
+    {
+        var jsonData = File.ReadAllText(jsonFilePath);
+        var documents = JsonConvert.DeserializeObject<List<T>>(jsonData);
+
+        // Insert the data into the collection
+        collection.InsertMany(documents);
+        Console.WriteLine($"Seeded {collectionName} with {documents.Count} documents.");
+    }
+    else
+    {
+        Console.WriteLine($"JSON file not found: {jsonFileName}");
+    }
+}
 
 app.MapControllers();
 
